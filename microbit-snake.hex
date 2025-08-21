@@ -1,0 +1,127 @@
+let snake = [[2, 2], [1, 2]]; // Initial snake: head at [2,2], tail at [1,2]
+let direction = 0; // 0: right, 1: down, 2: left, 3: up
+let dx = [1, 0, -1, 0]; // X direction changes
+let dy = [0, 1, 0, -1]; // Y direction changes
+let food = [0, 0]; // Food position
+let score = 0;
+let paused = false;
+let speed = 500; // Speed in milliseconds
+let lastA = false; // Track button A state
+let lastB = false; // Track button B state
+
+// Generate new food position, avoiding snake
+function generateFood() {
+    let possiblePositions = [];
+    // Create list of all possible 5x5 grid positions
+    for (let x = 0; x < 5; x++) {
+        for (let y = 0; y < 5; y++) {
+            let isSnake = false;
+            for (let i = 0; i < snake.length; i++) {
+                if (snake[i][0] === x && snake[i][1] === y) {
+                    isSnake = true;
+                    break;
+                }
+            }
+            if (!isSnake) {
+                possiblePositions.push([x, y]);
+            }
+        }
+    }
+    // If no valid positions, return a default (shouldn't happen unless snake fills grid)
+    if (possiblePositions.length === 0) {
+        return [0, 0]; // Fallback, though game should end before this
+    }
+    // Pick a random position from valid ones
+    let index = Math.randomRange(0, possiblePositions.length - 1);
+    let newFood = possiblePositions[index];
+    // Debug: Log the generated food position
+    console.log("Food at: " + newFood[0] + "," + newFood[1]);
+    return newFood;
+}
+
+// Initialize food
+food = generateFood();
+
+// Handle button A (turn left)
+input.onButtonPressed(Button.A, function () {
+    if (!paused) {
+        lastA = true;
+        if (!lastB) {
+            direction = (direction - 1 + 4) % 4;
+        }
+    }
+});
+
+// Handle button B (turn right)
+input.onButtonPressed(Button.B, function () {
+    if (!paused) {
+        lastB = true;
+        if (!lastA) {
+            direction = (direction + 1) % 4;
+        }
+    }
+});
+
+// Handle simultaneous A+B press to toggle pause
+input.onButtonPressed(Button.AB, function () {
+    paused = !paused;
+    lastA = false;
+    lastB = false;
+    if (paused) {
+        basic.showString("P");
+    } else {
+        basic.clearScreen();
+    }
+});
+
+// Main game loop
+basic.forever(function () {
+    if (!paused) {
+        // Calculate new head position with wrap-around
+        let head = snake[0];
+        let newHead = [(head[0] + dx[direction] + 5) % 5, (head[1] + dy[direction] + 5) % 5];
+
+        // Check for crash into self
+        for (let i = 0; i < snake.length; i++) {
+            if (newHead[0] === snake[i][0] && newHead[1] === snake[i][1]) {
+                basic.showString("Score: " + score);
+                game.gameOver();
+            }
+        }
+
+        // Add new head
+        snake.unshift(newHead);
+
+        // Check if food is eaten
+        let grow = false;
+        if (newHead[0] === food[0] && newHead[1] === food[1]) {
+            score += 1;
+            food = generateFood();
+            if (score % 5 === 0 && snake.length < 16) {
+                grow = true;
+            }
+        }
+
+        // Remove tail if not growing
+        if (!grow) {
+            snake.pop();
+        }
+
+        // Ensure max length
+        if (snake.length > 15) {
+            snake = snake.slice(0, 15);
+        }
+
+        // Update display
+        basic.clearScreen();
+        for (let i = 0; i < snake.length; i++) {
+            led.plotBrightness(snake[i][0], snake[i][1], 255); // Max brightness for snake
+        }
+        led.plotBrightness(food[0], food[1], 128); // Dimmer for food
+
+        // Reset button states
+        lastA = false;
+        lastB = false;
+    }
+    basic.pause(speed);
+});
