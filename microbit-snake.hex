@@ -5,14 +5,15 @@ let dy = [0, 1, 0, -1]; // Y direction changes
 let food = [0, 0]; // Food position
 let score = 0;
 let paused = false;
-let speed = 500; // Speed in milliseconds
+let speed = 500; // Game speed in milliseconds
 let lastA = false; // Track button A state
 let lastB = false; // Track button B state
+let foodVisible = true; // Track food blinking state
+let foodBlinkInterval = 50; // Blink interval in milliseconds
 
 // Generate new food position, avoiding snake
 function generateFood() {
     let possiblePositions = [];
-    // Create list of all possible 5x5 grid positions
     for (let x = 0; x < 5; x++) {
         for (let y = 0; y < 5; y++) {
             let isSnake = false;
@@ -27,14 +28,11 @@ function generateFood() {
             }
         }
     }
-    // If no valid positions, return a default (shouldn't happen unless snake fills grid)
     if (possiblePositions.length === 0) {
-        return [0, 0]; // Fallback, though game should end before this
+        return [0, 0]; // Fallback
     }
-    // Pick a random position from valid ones
     let index = Math.randomRange(0, possiblePositions.length - 1);
     let newFood = possiblePositions[index];
-    // Debug: Log the generated food position
     console.log("Food at: " + newFood[0] + "," + newFood[1]);
     return newFood;
 }
@@ -71,6 +69,14 @@ input.onButtonPressed(Button.AB, function () {
         basic.showString("P");
     } else {
         basic.clearScreen();
+    }
+});
+
+// Food blinking loop
+basic.forever(function () {
+    if (!paused) {
+        foodVisible = !foodVisible; // Toggle visibility
+        basic.pause(foodBlinkInterval);
     }
 });
 
@@ -117,7 +123,10 @@ basic.forever(function () {
         for (let i = 0; i < snake.length; i++) {
             led.plotBrightness(snake[i][0], snake[i][1], 255); // Max brightness for snake
         }
-        led.plotBrightness(food[0], food[1], 128); // Dimmer for food
+        // Plot food only if visible
+        if (foodVisible) {
+            led.plotBrightness(food[0], food[1], 128); // Dimmer for food
+        }
 
         // Reset button states
         lastA = false;
